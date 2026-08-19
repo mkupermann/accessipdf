@@ -1,63 +1,74 @@
 # accessipdf
 
-**Make existing PDFs accessible.** accessipdf converts PDFs from known layouts
-(invoices, statements, any template-generated documents) into fully tagged,
-**PDF/UA-1 conformant accessible PDFs** — while keeping the visual appearance
-pixel-identical. No commercial SDK, no AI guessing: deterministic rules per
-layout, validated by [veraPDF](https://verapdf.org/) on every single file.
+Screen readers get nothing useful out of most PDFs in circulation. There are no
+headings to jump between, the character codes often map to nothing a reader can
+pronounce, and the fonts the file relies on aren't in the file. The document
+looks fine and reads as noise.
+
+accessipdf retrofits those files. It takes PDFs from a known layout, an invoice
+run, a statement run, anything a template produced, and writes out a tagged,
+PDF/UA-1 conformant version whose pages render pixel for pixel like the original.
+No commercial SDK involved. The rules come from a layout template rather than a
+model guessing at structure, and [veraPDF](https://verapdf.org/) validates every
+single file before it is allowed out.
 
 ![Demo](docs/media/demo.gif)
 
-**▶ [Watch the demo video (37 s, with player)](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — how the conversion works and how every file is verified.
+**▶ [Demo video, 37 s](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — the conversion and the verification.
 
 ## Why
 
-Millions of archived and freshly generated PDFs fail screen readers: no tag
-structure, no Unicode mappings, fonts not embedded. Accessibility laws (EU
-European Accessibility Act, German BFSG, US Section 508) increasingly require
-accessible documents — including the ones you already have. Re-generating them
-is often impossible; retrofitting them must not change a single pixel.
+The European Accessibility Act and its German transposition, the BFSG, have
+applied since 28 June 2025. Section 508 has been in force in the US for far
+longer. What the deadlines changed is not the standard but the exposure: a
+document you serve to a customer today has to work for that customer today.
 
-accessipdf retrofits. The original file is never touched; the output is a new,
-byte-for-byte visually identical PDF that carries the full invisible
-accessibility layer.
+Regenerating the archive is usually not on the table. The system that produced
+those invoices has moved on, or was replaced, or the layout was signed off by
+people who have left. And even where regeneration is possible, it is the wrong
+tool, because the requirement is to add an invisible layer, not to reissue a
+document that customers already have on file.
+
+So the retrofit has a hard constraint. The original stays untouched, and the
+output has to be visually identical to the pixel. Anything that shifts a line or
+drops a glyph is a different document, and a different document is a new problem.
 
 ## What it does
 
-For every PDF, five stages:
+Five stages per file.
 
-1. **Extract** — parse content streams, track the graphics state, recover every
-   text operator with its position and decoded text (pikepdf + pypdfium2).
-2. **Identify** — match the file against registered YAML layout templates via
-   anchor texts. Unknown layouts are quarantined with a machine-readable
-   report, never guessed.
-3. **Assign semantics** — the template maps zones to roles: headings,
-   paragraphs, real tables with header cells (`TR`/`TH`/`TD` incl. multi-page
-   tables), decorative content as artifacts, plus reading order.
-4. **Tag & repair** — rewrite content streams with marked content (`BDC`/`EMC`
-   + MCIDs), build the structure tree, set language/title/XMP PDF/UA
-   identifier, and **repair fonts**: generate missing `ToUnicode` CMaps, embed
-   non-embedded standard fonts with metric-compatible Liberation faces
-   (bold stays bold), fix `CIDToGIDMap`, drop broken `CIDSet`s.
-5. **Gate** — veraPDF validates the result against PDF/UA-1. Green goes to the
-   output directory (atomic move), red goes to quarantine with the full rule
-   report. No silent green, ever.
+1. Parse the content streams, track the graphics state, and recover every text
+   operator with its position and decoded text (pikepdf and pypdfium2).
+2. Match the file against the registered YAML layout templates using anchor
+   texts. A layout nobody registered goes to quarantine with a
+   machine-readable report rather than to a heuristic.
+3. Map zones to roles from the template. Headings, paragraphs, real tables with
+   header cells (`TR`/`TH`/`TD`, including tables that run over several pages),
+   decorative content marked as artifacts, and the reading order.
+4. Rewrite the content streams with marked content (`BDC`/`EMC` plus MCIDs),
+   build the structure tree, set language, title and the XMP PDF/UA identifier.
+   Then repair the fonts: generate the `ToUnicode` CMaps that are missing, embed
+   metric-compatible Liberation faces for the standard fonts that were never
+   embedded (bold stays bold), fix `CIDToGIDMap`, drop broken `CIDSet`s.
+5. Hand the result to veraPDF. Green moves to the output directory atomically.
+   Red moves to quarantine together with the full rule report. There is no path
+   through this stage that produces an unvalidated green file.
 
-Processing is idempotent (SHA-256 registry) and fast: ~0.1–0.15 s per invoice
-for the engine itself; the per-file veraPDF JVM start dominates wall time
-(~0.7 s).
+Runs are idempotent through a SHA-256 registry. The engine itself needs roughly
+0.1 to 0.15 seconds per invoice; the JVM start for the per-file veraPDF call
+costs another 0.7 and dominates the wall clock.
 
 ## Quickstart
 
-Requirements: Python ≥ 3.12, veraPDF CLI on the PATH (`brew install verapdf`
-on macOS, or the [installer](https://verapdf.org/software/)).
+Python 3.12 or newer, and the veraPDF CLI on the PATH (`brew install verapdf` on
+macOS, otherwise the [installer](https://verapdf.org/software/)).
 
 ```bash
 git clone https://github.com/mkupermann/accessipdf
 cd accessipdf
 make setup
 
-# generate the synthetic, deliberately inaccessible demo invoice
+# a synthetic demo invoice, built to be inaccessible on purpose
 .venv/bin/python -m accessipdf.demo demo_invoice.pdf
 
 .venv/bin/accessipdf check demo_invoice.pdf        # FAIL — untagged, broken fonts
@@ -66,15 +77,15 @@ make setup
 .venv/bin/accessipdf check out/demo_invoice.pdf    # PASS — PDF/UA-1
 ```
 
-Exit codes of `convert`: `0` all green, `1` at least one file quarantined,
-`2` hard error.
+`convert` exits `0` when everything came out green, `1` when at least one file
+went to quarantine, `2` on a hard error.
 
 ## Adding your own layout
 
-One YAML per layout under `accessipdf/templates/vorlagen/` — see
-[`acme-demo.yaml`](accessipdf/templates/vorlagen/acme-demo.yaml) as the
-reference. Zone order defines the reading order; table zones only apply on
-pages where their header anchors are found:
+One YAML per layout under `accessipdf/templates/vorlagen/`. The reference is
+[`acme-demo.yaml`](accessipdf/templates/vorlagen/acme-demo.yaml). Zone order is
+the reading order, and a table zone only applies on the pages where its header
+anchors actually turn up.
 
 ```yaml
 name: my-layout
@@ -93,49 +104,56 @@ zonen:
 unbekannt_als: P
 ```
 
-`scripts/zonen_dump.py your.pdf 1 2` prints every text operator with its
-coordinates so you can measure the zones.
+To measure the zones, `scripts/zonen_dump.py your.pdf 1 2` prints every text
+operator with its coordinates.
 
 ## How it is verified
 
-Every conversion has to pass three independent gates — this is enforced by the
-pipeline and by the test suite (`make test`):
+Three gates, enforced by the pipeline and again by the test suite (`make test`).
 
-1. **veraPDF, zero errors** against the PDF/UA-1 profile, per file.
-2. **Pixel-identical rendering**: every page is rendered before and after and
-   compared pixel by pixel. The single allowed exception is glyph-edge
-   anti-aliasing noise after a font had to be embedded — and even then an
-   erosion mask (9×9 kernel) proves the difference contains no solid area,
-   i.e. nothing moved and nothing is missing.
-3. **Lossless text extraction**: no line of previously extractable text may be
-   lost. (It may get *better*: generating missing ToUnicode maps typically
-   fixes previously garbled extraction — that is the point of PDF/UA.)
+veraPDF has to report zero errors against the PDF/UA-1 profile, per file.
 
-The test suite builds a synthetic, deliberately broken demo invoice (untagged,
-no ToUnicode, non-embedded Helvetica/Helvetica-Bold) and drives it through the
-full pipeline including the veraPDF gate. In its original production setting,
-the engine converts real telecom invoices from two different layout families
-with 13/13 files passing all three gates; those documents contain customer
-data and are not part of this repository.
+Every page is rendered before and after and compared pixel by pixel. One
+exception is allowed, the anti-aliasing noise at glyph edges after a font had to
+be embedded, and even that has to survive an erosion mask with a 9×9 kernel
+proving the difference contains no solid area. Nothing moved, nothing went
+missing.
 
-Machine-green is not the whole truth: for production use, run a manual
-acceptance per layout with PAC 2024 and a screen reader (NVDA/VoiceOver).
+No line of previously extractable text may be lost. It is allowed to get better,
+and it usually does: generating the missing ToUnicode maps tends to fix
+extraction that was garbled before, which is rather the point of PDF/UA.
 
-## Limitations (by design)
+The test suite builds the synthetic demo invoice, untagged, without ToUnicode,
+with Helvetica and Helvetica-Bold referenced but not embedded, and drives it
+through the whole pipeline including the veraPDF gate. The engine came out of a
+production job on real telecom invoices from two layout families, where 13 of 13
+files passed all three gates. Those documents carry customer data and are not in
+this repository.
 
-- **Known layouts only.** Unknown PDFs are quarantined, not guessed at. This
-  is not a generic AI auto-tagger — for uniform template-generated documents,
-  deterministic rules beat guessing.
-- **No scanned PDFs** (no OCR) and **no signed PDFs** (tagging breaks
-  signatures — tag before signing).
-- Zones are measured per layout; a redesigned layout needs a template update.
-- Code identifiers and comments are currently German (the project originated
-  in a German accessibility context). Contributions — including translation —
-  are welcome.
+A green machine result is not the same as a usable document. Before you put a
+layout into production, do one manual acceptance pass with PAC 2024 and a screen
+reader, NVDA or VoiceOver.
+
+## Limitations, on purpose
+
+Known layouts only. An unregistered PDF is quarantined rather than guessed at.
+For uniform, template-generated documents that is the better trade: the rules
+are readable, reviewable and always produce the same result, which a generic
+auto-tagger cannot promise.
+
+No scanned PDFs, because there is no OCR. No signed PDFs either, since tagging
+breaks the signature. Tag first, then sign.
+
+Zones are measured against a specific layout, so a redesign means a template
+update.
+
+Identifiers and comments in the code are German, and so is the CLI help output.
+The project started in a German accessibility context. Contributions are
+welcome, translation included.
 
 ## License
 
-MIT (see [LICENSE](LICENSE)). The bundled Liberation fonts used for embedding
-substitutes are licensed under the SIL Open Font License, see
+MIT, see [LICENSE](LICENSE). The bundled Liberation fonts used as embedding
+substitutes are under the SIL Open Font License, see
 [`accessipdf/assets/LIZENZ-LiberationSans.txt`](accessipdf/assets/LIZENZ-LiberationSans.txt).
-veraPDF is invoked as an external tool and is not part of this distribution.
+veraPDF is called as an external tool and is not part of this distribution.
