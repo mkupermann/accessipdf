@@ -55,9 +55,7 @@ def walk_page(pdf: pikepdf.Pdf, page, max_tiefe: int = 6) -> list[TextOp]:
     """Alle Textoperatoren der Seite inklusive Form-XObjects, in Streamreihenfolge."""
     ergebnis: list[TextOp] = []
     cache: dict = {}
-    _walk_stream(
-        pdf, page, page.get("/Resources"), IDENT, "page", ergebnis, max_tiefe, cache
-    )
+    _walk_stream(pdf, page, page.get("/Resources"), IDENT, "page", ergebnis, max_tiefe, cache)
     return ergebnis
 
 
@@ -166,9 +164,7 @@ def _walk_stream(pdf, owner, resources, basis_ctm, stream_id, out, tiefe, cache)
             xobj = xobjekte.get(str(operanden[0]))
             if xobj is not None and xobj.get("/Subtype") == pikepdf.Name.Form:
                 matrix = xobj.get("/Matrix")
-                form_m = (
-                    tuple(float(x) for x in matrix) if matrix is not None else IDENT
-                )
+                form_m = tuple(float(x) for x in matrix) if matrix is not None else IDENT
                 _walk_stream(
                     pdf,
                     xobj,

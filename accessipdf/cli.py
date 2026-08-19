@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pikepdf
 
+from accessipdf import __version__
 from accessipdf.pipeline import convert
 from accessipdf.tagging.walker import walk_page
 from accessipdf.templates.loader import identify as identify_template
@@ -56,6 +57,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Wandelt Rechnungs-PDFs bekannter Layouts in barrierefreie "
         "PDFs nach PDF/UA-1 um, Erscheinungsbild 1 zu 1.",
     )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     unter = parser.add_subparsers(dest="befehl", required=True)
 
     p_convert = unter.add_parser("convert", help="Datei oder Verzeichnis umwandeln")

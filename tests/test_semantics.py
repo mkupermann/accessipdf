@@ -30,12 +30,7 @@ def test_ueberschrift_und_artefakt(demo_pdf):
 
     fussnote = [op for op in textops if "1 Demo Road" in op.text]
     assert fussnote, "Kleinformat-Fußzeile nicht gefunden"
-    inhalts_seqs = {
-        s
-        for b in semantik.bausteine
-        if isinstance(b, Absatz)
-        for s in b.seqs
-    } | {
+    inhalts_seqs = {s for b in semantik.bausteine if isinstance(b, Absatz) for s in b.seqs} | {
         s
         for b in semantik.bausteine
         if isinstance(b, Tabelle)
@@ -48,8 +43,6 @@ def test_ueberschrift_und_artefakt(demo_pdf):
 
 def test_kein_inhalt_geht_verloren(demo_pdf):
     textops, semantik = _semantik(demo_pdf)
-    page_ops = [
-        op for op in textops if op.stream == "page" and (op.text.strip() or op.undecoded)
-    ]
+    page_ops = [op for op in textops if op.stream == "page" and (op.text.strip() or op.undecoded)]
     behandelt = {a.seq for a in semantik.assignments}
     assert {op.seq for op in page_ops} <= behandelt

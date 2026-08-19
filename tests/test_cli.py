@@ -21,8 +21,13 @@ def test_check_unbehandelte_datei_faellt_durch(demo_pdf):
 
 def test_convert_ganzer_ordner(demo_pdf, tmp_path, capsys):
     rc = main(
-        ["convert", str(demo_pdf.parent), str(tmp_path / "aus"),
-         "--quarantaene", str(tmp_path / "quar")]
+        [
+            "convert",
+            str(demo_pdf.parent),
+            str(tmp_path / "aus"),
+            "--quarantaene",
+            str(tmp_path / "quar"),
+        ]
     )
     assert rc == 0
     assert "ok" in capsys.readouterr().out

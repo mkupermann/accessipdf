@@ -66,10 +66,17 @@ class Template:
 
 
 def _zone(daten: dict) -> Zone:
+    bbox_data = daten["bbox"]
+    bbox: tuple[float, float, float, float] = (
+        float(bbox_data[0]),
+        float(bbox_data[1]),
+        float(bbox_data[2]),
+        float(bbox_data[3]),
+    )
     return Zone(
         name=daten["name"],
         seiten=str(daten.get("seiten", "alle")),
-        bbox=tuple(float(v) for v in daten["bbox"]),
+        bbox=bbox,
         rolle=daten["rolle"],
         alt=daten.get("alt"),
         kopf_anker=list(daten.get("kopf_anker", [])),
@@ -90,7 +97,12 @@ def load_templates(verzeichnis: Path = VORLAGEN_DIR) -> list["Template"]:
                     Anker(
                         text=a["text"],
                         seite=int(a.get("seite", 1)),
-                        bbox=tuple(float(v) for v in a["bbox"]),
+                        bbox=(
+                            float(a["bbox"][0]),
+                            float(a["bbox"][1]),
+                            float(a["bbox"][2]),
+                            float(a["bbox"][3]),
+                        ),
                     )
                     for a in daten["erkennung"]
                 ],
@@ -99,7 +111,12 @@ def load_templates(verzeichnis: Path = VORLAGEN_DIR) -> list["Template"]:
                     Feld(
                         name=name,
                         seite=int(f.get("seite", 1)),
-                        bbox=tuple(float(v) for v in f["bbox"]),
+                        bbox=(
+                            float(f["bbox"][0]),
+                            float(f["bbox"][1]),
+                            float(f["bbox"][2]),
+                            float(f["bbox"][3]),
+                        ),
                     )
                     for name, f in daten.get("felder", {}).items()
                 ],

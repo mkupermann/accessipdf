@@ -32,9 +32,9 @@ def test_embed_standard_fonts(demo_pdf, tmp_path):
             if desc is None and font.get("/Subtype") == pikepdf.Name.Type0:
                 desc = font.DescendantFonts[0].get("/FontDescriptor")
             assert desc is not None
-            assert any(
-                s in desc for s in ("/FontFile", "/FontFile2", "/FontFile3")
-            ), f"nicht eingebettet: {font.get('/BaseFont')}"
+            assert any(s in desc for s in ("/FontFile", "/FontFile2", "/FontFile3")), (
+                f"nicht eingebettet: {font.get('/BaseFont')}"
+            )
 
     # Erlaubt ist Glyphenkanten-Rauschen der Ersatzschrift, keine flächige Abweichung.
     for a, b in zip(render_pages(str(demo_pdf)), render_pages(str(ziel))):

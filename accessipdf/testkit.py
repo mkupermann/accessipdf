@@ -5,13 +5,12 @@ ACCESSIPDF_SAMPLES einbinden. Tests darauf überspringen sich sauber, wenn sie
 nicht gesetzt ist.
 """
 
+import os
 from pathlib import Path
 
 import pypdfium2 as pdfium
 import pytest
 from PIL import Image, ImageChops
-
-import os
 
 _samples_env = os.environ.get("ACCESSIPDF_SAMPLES")
 SAMPLES_DIR = Path(_samples_env) if _samples_env else None
@@ -24,9 +23,7 @@ def require_samples():
     ACCESSIPDF_SAMPLES einbinden.
     """
     return pytest.mark.skipif(
-        SAMPLES_DIR is None
-        or not SAMPLES_DIR.is_dir()
-        or not any(SAMPLES_DIR.glob("*.pdf")),
+        SAMPLES_DIR is None or not SAMPLES_DIR.is_dir() or not any(SAMPLES_DIR.glob("*.pdf")),
         reason="ACCESSIPDF_SAMPLES zeigt auf kein PDF-Verzeichnis",
     )
 

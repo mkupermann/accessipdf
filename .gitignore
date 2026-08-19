@@ -1,11 +1,43 @@
+# Python
 .venv/
 __pycache__/
 *.egg-info/
+*.egg
+
+# Testing
 .pytest_cache/
+.coverage
+coverage.xml
+
+# Output directories
 beispiele/
 ausgang/
 quarantaene/
 eingang/
+
+# Generated files
 *.pdf
 .DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
 docs/media/frames/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# pre-commit
+.pre-commit-cache/

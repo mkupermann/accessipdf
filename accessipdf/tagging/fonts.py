@@ -26,9 +26,7 @@ def winansi_map(font) -> dict[int, str]:
         # Differences: Zahl setzt den Code, folgende Namen belegen aufsteigend.
         code = 0
         for eintrag in enc.Differences:
-            if isinstance(eintrag, (int, pikepdf.Object)) and not isinstance(
-                eintrag, pikepdf.Name
-            ):
+            if isinstance(eintrag, (int, pikepdf.Object)) and not isinstance(eintrag, pikepdf.Name):
                 try:
                     code = int(eintrag)
                     continue
@@ -52,11 +50,25 @@ def _glyphname_to_unicode(name: str) -> str | None:
     if len(name) == 1:
         return name
     haeufig = {
-        "space": " ", "period": ".", "comma": ",", "hyphen": "-", "colon": ":",
-        "adieresis": "ä", "odieresis": "ö", "udieresis": "ü",
-        "Adieresis": "Ä", "Odieresis": "Ö", "Udieresis": "Ü",
-        "germandbls": "ß", "Euro": "€", "slash": "/", "parenleft": "(",
-        "parenright": ")", "plus": "+", "ampersand": "&", "at": "@",
+        "space": " ",
+        "period": ".",
+        "comma": ",",
+        "hyphen": "-",
+        "colon": ":",
+        "adieresis": "ä",
+        "odieresis": "ö",
+        "udieresis": "ü",
+        "Adieresis": "Ä",
+        "Odieresis": "Ö",
+        "Udieresis": "Ü",
+        "germandbls": "ß",
+        "Euro": "€",
+        "slash": "/",
+        "parenleft": "(",
+        "parenright": ")",
+        "plus": "+",
+        "ampersand": "&",
+        "at": "@",
     }
     return haeufig.get(name)
 
@@ -83,10 +95,9 @@ def parse_ttf_cmap(fontdaten: bytes) -> dict[int, int]:
         anzahl = struct.unpack_from(">H", fontdaten, cmap_offset + 2)[0]
         kandidaten = []
         for i in range(anzahl):
-            plat, enc, sub_off = struct.unpack_from(
-                ">HHI", fontdaten, cmap_offset + 4 + 8 * i
-            )
+            plat, enc, sub_off = struct.unpack_from(">HHI", fontdaten, cmap_offset + 4 + 8 * i)
             kandidaten.append((plat, enc, cmap_offset + sub_off))
+
         # Bevorzugt Windows-BMP (3,1), dann Windows-UCS4 (3,10), dann Unicode (0,x)
         def rang(k):
             plat, enc, _ = k
@@ -221,9 +232,7 @@ class FontInfo:
 
     def codes(self, raw: bytes) -> list[int]:
         if self.ist_type0:
-            return [
-                (raw[i] << 8) | raw[i + 1] for i in range(0, len(raw) - 1, 2)
-            ]
+            return [(raw[i] << 8) | raw[i + 1] for i in range(0, len(raw) - 1, 2)]
         return list(raw)
 
     def decode(self, raw: bytes) -> tuple[str, bool]:
@@ -356,9 +365,7 @@ def _cmap_daten(code_zu_unicode: dict[int, str], zwei_byte: bool) -> bytes:
         b"/CMapName /Adobe-Identity-UCS def",
         b"/CMapType 2 def",
         b"1 begincodespacerange",
-        (
-            b"<0000> <FFFF>" if zwei_byte else b"<00> <FF>"
-        ),
+        (b"<0000> <FFFF>" if zwei_byte else b"<00> <FF>"),
         b"endcodespacerange",
     ]
     eintraege = sorted(code_zu_unicode.items())
@@ -434,9 +441,7 @@ def ensure_tounicode(pdf: pikepdf.Pdf) -> list[str]:
 def _ttf_tabellen(d: bytes) -> dict[bytes, tuple[int, int]]:
     anzahl = struct.unpack_from(">H", d, 4)[0]
     return {
-        struct.unpack_from(">4s", d, 12 + 16 * i)[0]: struct.unpack_from(
-            ">II", d, 12 + 16 * i + 8
-        )
+        struct.unpack_from(">4s", d, 12 + 16 * i)[0]: struct.unpack_from(">II", d, 12 + 16 * i + 8)
         for i in range(anzahl)
     }
 
@@ -478,9 +483,7 @@ def _ist_eingebettet(font) -> bool:
     desc = font.get("/FontDescriptor")
     if desc is None and font.get("/Subtype") == pikepdf.Name.Type0:
         desc = font.DescendantFonts[0].get("/FontDescriptor")
-    return desc is not None and any(
-        s in desc for s in ("/FontFile", "/FontFile2", "/FontFile3")
-    )
+    return desc is not None and any(s in desc for s in ("/FontFile", "/FontFile2", "/FontFile3"))
 
 
 def _embed_font(pdf, font, neuer_name: str, daten: bytes, metrik: dict, fontfile) -> None:
@@ -528,7 +531,7 @@ def embed_standard_fonts(pdf: pikepdf.Pdf) -> list[str]:
     Fehler aus, statt still falsch ersetzt zu werden.
     """
     ersetzt: list[str] = []
-    geladene: dict[str, tuple[bytes, dict, object]] = {}
+    geladene: dict[str, tuple[bytes, dict, pikepdf.Stream]] = {}
     for _, _, font in iter_fonts(pdf):
         if font.get("/Subtype") == pikepdf.Name.Type0 or _ist_eingebettet(font):
             continue
@@ -536,9 +539,7 @@ def embed_standard_fonts(pdf: pikepdf.Pdf) -> list[str]:
         if "+" in base:
             base = base.split("+", 1)[1]
         if base not in STANDARD_ERSATZ:
-            raise FontReparaturFehler(
-                f"nicht eingebetteter Font {base} ohne bekannten Ersatz"
-            )
+            raise FontReparaturFehler(f"nicht eingebetteter Font {base} ohne bekannten Ersatz")
         neuer_name, dateiname = STANDARD_ERSATZ[base]
         if neuer_name not in geladene:
             daten = (_ASSETS / dateiname).read_bytes()

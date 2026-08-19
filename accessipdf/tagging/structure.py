@@ -9,15 +9,11 @@ def fuelle_mcids(bausteine: list, mcid_je_seq: dict[int, int]) -> None:
     """Überträgt die von wrap_page vergebenen MCIDs in die Bausteine."""
     for baustein in bausteine:
         if isinstance(baustein, Absatz):
-            baustein.mcids = [
-                mcid_je_seq[s] for s in baustein.seqs if s in mcid_je_seq
-            ]
+            baustein.mcids = [mcid_je_seq[s] for s in baustein.seqs if s in mcid_je_seq]
         elif isinstance(baustein, Tabelle):
             for zeile in baustein.zeilen:
                 for zelle in zeile.zellen:
-                    zelle.mcids = [
-                        mcid_je_seq[s] for s in zelle.seqs if s in mcid_je_seq
-                    ]
+                    zelle.mcids = [mcid_je_seq[s] for s in zelle.seqs if s in mcid_je_seq]
 
 
 def build_structure(pdf: pikepdf.Pdf, seiten: list[tuple]) -> None:
@@ -27,9 +23,7 @@ def build_structure(pdf: pikepdf.Pdf, seiten: list[tuple]) -> None:
     Namens auf aufeinanderfolgenden Seiten werden zu einem Table-Element
     zusammengeführt (mehrseitige Positionslisten).
     """
-    struct_root = pdf.make_indirect(
-        pikepdf.Dictionary(Type=pikepdf.Name.StructTreeRoot)
-    )
+    struct_root = pdf.make_indirect(pikepdf.Dictionary(Type=pikepdf.Name.StructTreeRoot))
     dokument = pdf.make_indirect(
         pikepdf.Dictionary(
             Type=pikepdf.Name.StructElem,

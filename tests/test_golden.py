@@ -28,14 +28,10 @@ def test_demo_rechnung_wird_barrierefrei(demo_pdf, tmp_path):
             # Erlaubt: Glyphenkanten-Rauschen der eingebetteten Ersatzschrift.
             assert ergebnis.report["font_reparaturen"]["eingebettet"]
             assert anteil < 0.25, f"Seite {i + 1}: {anteil:.4%} ist zu viel"
-            assert solid_diff_area(a, b, kern=9) == 0, (
-                f"Seite {i + 1}: flächige Abweichung"
-            )
+            assert solid_diff_area(a, b, kern=9) == 0, f"Seite {i + 1}: flächige Abweichung"
 
     # Kein sauber dekodierter Text darf verloren gehen.
-    for seite_vorher, seite_nachher in zip(
-        extract_text(str(demo_pdf)), extract_text(str(ziel))
-    ):
+    for seite_vorher, seite_nachher in zip(extract_text(str(demo_pdf)), extract_text(str(ziel))):
         for zeile in seite_vorher.splitlines():
             if zeile.strip():
                 assert zeile in seite_nachher, f"Zeile verloren: {zeile!r}"

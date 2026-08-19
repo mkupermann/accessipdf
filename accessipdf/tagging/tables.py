@@ -59,10 +59,6 @@ def plan_table(
         zellen: dict[int, Zelle] = {}
         for op in zeile_ops:
             index = _spalte(op, spalten)
-            zellen.setdefault(index, Zelle(spalte=index, kopf=ist_kopf)).seqs.append(
-                op.seq
-            )
-        tabelle.zeilen.append(
-            Zeile(kopf=ist_kopf, zellen=[zellen[i] for i in sorted(zellen)])
-        )
+            zellen.setdefault(index, Zelle(spalte=index, kopf=ist_kopf)).seqs.append(op.seq)
+        tabelle.zeilen.append(Zeile(kopf=ist_kopf, zellen=[zellen[i] for i in sorted(zellen)]))
     return tabelle

@@ -49,7 +49,7 @@ def _artifact_bdc(art_typ: str) -> tuple:
     )
 
 
-_EMC = ([], pikepdf.Operator("EMC"))
+_EMC: tuple[list, pikepdf.Operator] = ([], pikepdf.Operator("EMC"))
 
 
 def wrap_page(pdf: pikepdf.Pdf, page, assignments: list[Assignment]) -> dict[int, int]:

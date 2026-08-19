@@ -15,9 +15,7 @@ def test_wrap_und_struktur_auf_mini_pdf(tmp_path):
         seite = pdf.pages[0]
         textops = [op for op in walk_page(pdf, seite) if op.stream == "page"]
         assert len(textops) == 2
-        zuweisungen = [
-            Assignment(seq=op.seq, stream="page", role="P") for op in textops
-        ]
+        zuweisungen = [Assignment(seq=op.seq, stream="page", role="P") for op in textops]
         bausteine = [Absatz(role="P", seqs=[op.seq]) for op in textops]
         mcids = wrap_page(pdf, seite, zuweisungen)
         fuelle_mcids(bausteine, mcids)
@@ -47,9 +45,7 @@ def test_wrap_demo_rechnung_pixelgleich(demo_pdf, tmp_path):
         seiten = []
         for seite in pdf.pages:
             textops = [op for op in walk_page(pdf, seite) if op.stream == "page"]
-            zuweisungen = [
-                Assignment(seq=op.seq, stream="page", role="P") for op in textops
-            ]
+            zuweisungen = [Assignment(seq=op.seq, stream="page", role="P") for op in textops]
             bausteine = [Absatz(role="P", seqs=[op.seq for op in textops])]
             mcids = wrap_page(pdf, seite, zuweisungen)
             fuelle_mcids(bausteine, mcids)

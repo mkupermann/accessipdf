@@ -66,9 +66,7 @@ def _registry_schreiben(ausgang: Path, registry: dict) -> None:
     os.replace(tmp, pfad)
 
 
-def _quarantaene(
-    quelle: Path, quarantaene_dir: Path, grund: str, report: dict
-) -> ConvertResult:
+def _quarantaene(quelle: Path, quarantaene_dir: Path, grund: str, report: dict) -> ConvertResult:
     quarantaene_dir.mkdir(parents=True, exist_ok=True)
     shutil.copy2(quelle, quarantaene_dir / quelle.name)
     bericht = dict(report)
@@ -108,12 +106,8 @@ def convert(in_path: str, out_dir: str, quarantaene_dir: str) -> ConvertResult:
 
             felder = extrahiere_felder(template, seiten_textops)
             seiten = []
-            for nummer, (seite, textops) in enumerate(
-                zip(pdf.pages, seiten_textops), start=1
-            ):
-                semantik = assign(
-                    textops, template, seite_nr=nummer, n_seiten=len(pdf.pages)
-                )
+            for nummer, (seite, textops) in enumerate(zip(pdf.pages, seiten_textops), start=1):
+                semantik = assign(textops, template, seite_nr=nummer, n_seiten=len(pdf.pages))
                 mcids = wrap_page(pdf, seite, semantik.assignments)
                 fuelle_mcids(semantik.bausteine, mcids)
                 seiten.append((seite, semantik.bausteine))

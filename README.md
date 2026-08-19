@@ -1,6 +1,6 @@
 # accessipdf
 
-<img width="428" height="328" alt="image" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
+<img width="428" height="328" alt="accessipdf application screenshot showing a PDF being processed" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
 
 
 Screen readers get nothing useful out of most PDFs in circulation. There are no
@@ -33,7 +33,7 @@ So the retrofit has a hard constraint. The original stays untouched, and the
 output has to be visually identical to the pixel. Anything that shifts a line or
 drops a glyph is a different document, and a different document is a new problem.
 
-![Demo](docs/media/demo.gif)
+![Demo animation showing PDF accessibility transformation](docs/media/demo.gif)
 
 **▶ [Demo video, 37 s](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — the conversion and the verification.
 

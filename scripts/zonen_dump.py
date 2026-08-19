@@ -17,7 +17,9 @@ def main() -> None:
             for op in walk_page(pdf, seite):
                 x0, y0, x1, y1 = (round(v) for v in op.bbox)
                 kurz = op.text[:60].replace("\n", " ")
-                print(f"{op.stream:14} seq={op.seq:4} ({x0:4},{y0:4})-({x1:4},{y1:4}) {op.size:4.1f} {kurz}")
+                print(
+                    f"{op.stream:14} seq={op.seq:4} ({x0:4},{y0:4})-({x1:4},{y1:4}) {op.size:4.1f} {kurz}"
+                )
 
 
 if __name__ == "__main__":

@@ -39,17 +39,11 @@ def _tabellen_zone_aktiv(zone: Zone, ops_in_zone: list[TextOp]) -> bool:
     return all(anker in text for anker in zone.kopf_anker)
 
 
-def assign(
-    textops: list[TextOp], template: Template, seite_nr: int, n_seiten: int
-) -> PageSemantik:
+def assign(textops: list[TextOp], template: Template, seite_nr: int, n_seiten: int) -> PageSemantik:
     # Leere Textoperatoren (reine Platzhalter ohne Inhalt) bleiben unzugewiesen
     # und werden beim Klammern Artefakt. Undekodierte Operatoren bleiben drin,
     # ihr Inhalt darf nicht stumm verschwinden.
-    page_ops = [
-        op
-        for op in textops
-        if op.stream == "page" and (op.text.strip() or op.undecoded)
-    ]
+    page_ops = [op for op in textops if op.stream == "page" and (op.text.strip() or op.undecoded)]
     zonen = [z for z in template.zonen if z.gilt_fuer(seite_nr, n_seiten)]
 
     ops_je_zone: dict[int, list[TextOp]] = {id(z): [] for z in zonen}
@@ -77,8 +71,7 @@ def assign(
         for absatz in _absaetze(ops, rolle, alt):
             semantik.bausteine.append(absatz)
             semantik.assignments.extend(
-                Assignment(seq=seq, stream="page", role=rolle, alt=alt)
-                for seq in absatz.seqs
+                Assignment(seq=seq, stream="page", role=rolle, alt=alt) for seq in absatz.seqs
             )
 
     for zone in aktive_zonen:
@@ -96,8 +89,7 @@ def assign(
                 for zelle in zeile.zellen:
                     rolle = "TH" if zelle.kopf else "TD"
                     semantik.assignments.extend(
-                        Assignment(seq=seq, stream="page", role=rolle)
-                        for seq in zelle.seqs
+                        Assignment(seq=seq, stream="page", role=rolle) for seq in zelle.seqs
                     )
         else:
             absatz_bausteine(ops, zone.rolle, zone.alt)

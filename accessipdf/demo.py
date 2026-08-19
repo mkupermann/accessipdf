@@ -72,11 +72,15 @@ def build_demo_invoice(path: str) -> str:
     content += line("F2", 10, 60, 430, "Amount due")
     content += line("F2", 10, 470, 430, "50.34")
     # Closing paragraph
-    content += line("F1", 10, 60, 370, "Payment is due within 14 days. We will collect the amount by")
+    content += line(
+        "F1", 10, 60, 370, "Payment is due within 14 days. We will collect the amount by"
+    )
     content += line("F1", 10, 60, 355, "direct debit from your registered bank account.")
     content += line("F1", 10, 60, 320, "Thank you for choosing ACME Utilities.")
     # Small print footer (running content, will be tagged as artifact)
-    content += line("F1", 7, 60, 50, "ACME Utilities Ltd. - 1 Demo Road - Springfield - Registered: HRB 00000")
+    content += line(
+        "F1", 7, 60, 50, "ACME Utilities Ltd. - 1 Demo Road - Springfield - Registered: HRB 00000"
+    )
 
     page = pdf.make_indirect(page)
     page.Contents = pdf.make_stream(content)
