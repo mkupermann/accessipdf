@@ -8,9 +8,7 @@ layout, validated by [veraPDF](https://verapdf.org/) on every single file.
 
 ![Demo](docs/media/demo.gif)
 
-https://github.com/mkupermann/accessipdf/raw/main/docs/media/demo.mp4
-
-*(Full video with timing: [docs/media/demo.mp4](docs/media/demo.mp4))*
+**▶ [Watch the demo video (37 s, with player)](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — how the conversion works and how every file is verified.
 
 ## Why
 
