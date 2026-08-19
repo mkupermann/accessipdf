@@ -5,16 +5,13 @@ headings to jump between, the character codes often map to nothing a reader can
 pronounce, and the fonts the file relies on aren't in the file. The document
 looks fine and reads as noise.
 
-accessipdf retrofits those files. It takes PDFs from a known layout, an invoice
-run, a statement run, anything a template produced, and writes out a tagged,
-PDF/UA-1 conformant version whose pages render pixel for pixel like the original.
-No commercial SDK involved. The rules come from a layout template rather than a
-model guessing at structure, and [veraPDF](https://verapdf.org/) validates every
-single file before it is allowed out.
-
-![Demo](docs/media/demo.gif)
-
-**▶ [Demo video, 37 s](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — the conversion and the verification.
+What is missing can be put back without rebuilding the document. accessipdf
+takes PDFs from a known layout, an invoice run, a statement run, anything a
+template produced, and writes out a tagged, PDF/UA-1 conformant version whose
+pages render pixel for pixel like the original. No commercial SDK involved. The
+rules come from a layout template rather than a model guessing at structure, and
+[veraPDF](https://verapdf.org/) validates every single file before it is allowed
+out.
 
 ## Why
 
@@ -32,6 +29,10 @@ document that customers already have on file.
 So the retrofit has a hard constraint. The original stays untouched, and the
 output has to be visually identical to the pixel. Anything that shifts a line or
 drops a glyph is a different document, and a different document is a new problem.
+
+![Demo](docs/media/demo.gif)
+
+**▶ [Demo video, 37 s](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — the conversion and the verification.
 
 ## What it does
 
