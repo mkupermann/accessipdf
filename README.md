@@ -1,5 +1,8 @@
 # accessipdf
 
+<img width="978" height="728" alt="image" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
+
+
 Screen readers get nothing useful out of most PDFs in circulation. There are no
 headings to jump between, the character codes often map to nothing a reader can
 pronounce, and the fonts the file relies on aren't in the file. The document
