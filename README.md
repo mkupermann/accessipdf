@@ -2,102 +2,268 @@
 
 <img width="428" height="328" alt="accessipdf application screenshot showing a PDF being processed" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
 
+**Make existing PDFs accessible — template-driven PDF/UA-1 tagging engine, pixel-identical output, veraPDF-gated.**
 
-Screen readers get nothing useful out of most PDFs in circulation. There are no
-headings to jump between, the character codes often map to nothing a reader can
-pronounce, and the fonts the file relies on aren't in the file. The document
-looks fine and reads as noise.
+---
 
-What is missing can be put back without rebuilding the document. accessipdf
-takes PDFs from a known layout, an invoice run, a statement run, anything a
-template produced, and writes out a tagged, PDF/UA-1 conformant version whose
-pages render pixel for pixel like the original. No commercial SDK involved. The
-rules come from a layout template rather than a model guessing at structure, and
-[veraPDF](https://verapdf.org/) validates every single file before it is allowed
-out.
-
-## Why
-
-The European Accessibility Act and its German transposition, the BFSG, have
-applied since 28 June 2025. Section 508 has been in force in the US for far
-longer. What the deadlines changed is not the standard but the exposure: a
-document you serve to a customer today has to work for that customer today.
-
-Regenerating the archive is usually not on the table. The system that produced
-those invoices has moved on, or was replaced, or the layout was signed off by
-people who have left. And even where regeneration is possible, it is the wrong
-tool, because the requirement is to add an invisible layer, not to reissue a
-document that customers already have on file.
-
-So the retrofit has a hard constraint. The original stays untouched, and the
-output has to be visually identical to the pixel. Anything that shifts a line or
-drops a glyph is a different document, and a different document is a new problem.
+## Demo
 
 ![Demo animation showing PDF accessibility transformation](docs/media/demo.gif)
 
-**▶ [Demo video, 37 s](https://github.com/mkupermann/accessipdf/blob/main/docs/media/demo.mp4)** — the conversion and the verification.
+**▶ [Demo video, 37 s](docs/media/demo.mp4)** — the conversion and the verification.
+
+---
 
 ## What it does
 
-Five stages per file.
+accessipdf converts existing PDFs to **PDF/UA-1 compliant** accessible documents without changing their visual appearance. The conversion is **template-driven** — you define the layout once, and all PDFs matching that layout are processed consistently.
 
-1. Parse the content streams, track the graphics state, and recover every text
-   operator with its position and decoded text (pikepdf and pypdfium2).
-2. Match the file against the registered YAML layout templates using anchor
-   texts. A layout nobody registered goes to quarantine with a
-   machine-readable report rather than to a heuristic.
-3. Map zones to roles from the template. Headings, paragraphs, real tables with
-   header cells (`TR`/`TH`/`TD`, including tables that run over several pages),
-   decorative content marked as artifacts, and the reading order.
-4. Rewrite the content streams with marked content (`BDC`/`EMC` plus MCIDs),
-   build the structure tree, set language, title and the XMP PDF/UA identifier.
-   Then repair the fonts: generate the `ToUnicode` CMaps that are missing, embed
-   metric-compatible Liberation faces for the standard fonts that were never
-   embedded (bold stays bold), fix `CIDToGIDMap`, drop broken `CIDSet`s.
-5. Hand the result to veraPDF. Green moves to the output directory atomically.
-   Red moves to quarantine together with the full rule report. There is no path
-   through this stage that produces an unvalidated green file.
+### The 5-Stage Pipeline
 
-Runs are idempotent through a SHA-256 registry. The engine itself needs roughly
-0.1 to 0.15 seconds per invoice; the JVM start for the per-file veraPDF call
-costs another 0.7 and dominates the wall clock.
+1. **Parse** – Extract content streams, graphics state, and text operators with positions (using pikepdf and pypdfium2)
+2. **Match** – Identify the PDF against registered YAML layout templates using anchor texts
+3. **Map** – Apply semantic roles (H1, P, Table, Artifact) based on zone definitions from the template
+4. **Rewrite** – Inject marked content (BDC/EMC with MCIDs), build structure tree, set language/title/XMP metadata, repair fonts (generate ToUnicode CMaps, embed Liberation fonts, fix CIDToGIDMap, drop broken CIDSets)
+5. **Validate** – Hand results to veraPDF; green files move to output, red files go to quarantine with full reports
+
+### Key Features
+
+- **Idempotent** – SHA-256 registry prevents duplicate processing
+- **Performance** – ~0.1-0.15s per invoice (JVM start for veraPDF adds ~0.7s)
+- **Pixel-perfect** – Output renders identically to the original
+- **Three validation gates** – veraPDF compliance, pixel-diff rendering, text extraction integrity
+- **Template system** – YAML-based layout definitions, readable and versionable
+
+---
+
+## Screenshots
+
+The Streamlit GUI provides a web interface for all accessipdf functions:
+
+| Main Interface | Single PDF Conversion |
+|----------------|------------------------|
+| ![Main Interface](docs/media/gui/01-main.png) | ![Single PDF](docs/media/gui/02-single-pdf.png) |
+
+| Folder Conversion | Identify Layout |
+|------------------|-----------------|
+| ![Folder](docs/media/gui/03-folder.png) | ![Identify](docs/media/gui/04-identify.png) |
+
+| Validate PDF/UA-1 | Batch Processing |
+|-------------------|------------------|
+| ![Validate](docs/media/gui/05-validate.png) | ![Batch](docs/media/gui/06-batch.png) |
+
+---
 
 ## Quickstart
 
-Python 3.12 or newer, and the veraPDF CLI on the PATH (`brew install verapdf` on
-macOS, otherwise the [installer](https://verapdf.org/software/)).
+### Prerequisites
+
+- **Python** 3.12 or newer
+- **veraPDF CLI** – Required for PDF/UA-1 validation
+  - macOS: `brew install verapdf`
+  - Linux (Debian/Ubuntu): `sudo apt-get install verapdf`
+  - Windows: Download from [veraPDF releases](https://github.com/veraPDF/veraPDF-apps/releases)
+
+### Installation
 
 ```bash
-git clone https://github.com/mkupermann/accessipdf
+# Clone the repository
+git clone https://github.com/mkupermann/accessipdf.git
 cd accessipdf
+
+# Create virtual environment and install dependencies
 make setup
 
-# a synthetic demo invoice, built to be inaccessible on purpose
+# Generate a demo PDF
 .venv/bin/python -m accessipdf.demo demo_invoice.pdf
 
-.venv/bin/accessipdf check demo_invoice.pdf        # FAIL — untagged, broken fonts
+# Try the CLI
 .venv/bin/accessipdf identify demo_invoice.pdf     # Layout: acme-demo
+.venv/bin/accessipdf check demo_invoice.pdf        # FAIL — untagged, broken fonts
 .venv/bin/accessipdf convert demo_invoice.pdf out/ # tag, repair, validate
 .venv/bin/accessipdf check out/demo_invoice.pdf    # PASS — PDF/UA-1
 ```
 
-`convert` exits `0` when everything came out green, `1` when at least one file
-went to quarantine, `2` on a hard error.
+### Exit Codes
 
-## Adding your own layout
+- `0` – All files processed successfully
+- `1` – At least one file went to quarantine
+- `2` – Hard error during processing
 
-One YAML per layout under `accessipdf/templates/vorlagen/`. The reference is
-[`acme-demo.yaml`](accessipdf/templates/vorlagen/acme-demo.yaml). Zone order is
-the reading order, and a table zone only applies on the pages where its header
-anchors actually turn up.
+---
+
+## Usage Options
+
+### 1. Command Line Interface (CLI)
+
+**Commands:**
+
+```bash
+# Convert PDF(s)
+accessipdf convert <input> <output_dir> [--quarantaene <quarantine_dir>]
+
+# Identify layout
+accessipdf identify <pdf_file>
+
+# Check PDF/UA-1 compliance
+accessipdf check <pdf_file>
+
+# Show version
+accessipdf --version
+```
+
+**Examples:**
+
+```bash
+# Single file
+accessipdf convert input/invoice.pdf output/
+
+# Directory of files
+accessipdf convert input/ output/
+
+# Identify which template a PDF matches
+accessipdf identify my_document.pdf
+
+# Verify PDF/UA-1 compliance
+accessipdf check accessible_document.pdf
+```
+
+---
+
+### 2. Streamlit Web GUI
+
+A beautiful, professional web interface for all accessipdf functions.
+
+**Start the GUI:**
+
+```bash
+# Option 1: Using make
+make gui
+
+# Option 2: Direct command
+.venv/bin/python scripts/run_gui.py
+
+# Option 3: Streamlit directly
+.venv/bin/streamlit run gui/app.py
+```
+
+The GUI will be available at: **http://localhost:8501**
+
+**GUI Features:**
+
+| Tab | Function | Description |
+|-----|----------|-------------|
+| **Single PDF** | Convert one PDF | Upload a single PDF, auto-detect layout, convert, download result |
+| **Folder** | Batch convert | Select multiple PDFs from same folder, convert all at once |
+| **Identify Layout** | Template detection | Upload a PDF to see which template it matches |
+| **Validate** | PDF/UA-1 check | Validate any PDF against the accessibility standard |
+| **Batch** | Multi-file convert | Upload multiple PDFs, process all, download as ZIP |
+
+**GUI Design:**
+
+- Professional, clean interface using IBM Plex Sans
+- No emojis, clear typography
+- Color-coded status messages:
+  - Green (#2e7d32) – Success
+  - Red (#c62828) – Error
+  - Blue (#1565c0) – Information
+  - Orange (#e65100) – Warning
+- Responsive layout
+- Real-time feedback
+
+---
+
+### 3. Docker Container
+
+Run accessipdf in a containerized environment with all dependencies pre-installed.
+
+**Quick Start:**
+
+```bash
+# Build the image
+docker-compose build
+
+# Start the GUI
+docker-compose up -d accessipdf-gui
+
+# Access the GUI at: http://localhost:8501
+```
+
+**Docker Commands:**
+
+```bash
+# Build image
+docker-compose build
+
+# Start GUI service
+docker-compose up -d accessipdf-gui
+
+# View logs
+docker-compose logs -f accessipdf-gui
+
+# Stop service
+docker-compose down
+
+# CLI-only (for batch processing)
+docker-compose run --rm accessipdf-cli convert /app/input/ /app/output/
+```
+
+**Dockerfile Features:**
+
+- Multi-stage build for smaller final image
+- Python 3.12-slim base
+- veraPDF pre-installed
+- All Python dependencies in virtual environment
+- Health checks configured
+- Persistent volumes for uploads/outputs/quarantine
+
+**Volumes:**
+
+| Host Path | Container Path | Purpose |
+|-----------|-----------------|---------|
+| `./uploads/` | `/app/uploads/` | Uploaded files |
+| `./outputs/` | `/app/outputs/` | Processed files |
+| `./quarantine/` | `/app/quarantine/` | Failed conversions |
+
+---
+
+## Adding Your Own Layout Template
+
+accessipdf uses YAML templates to define PDF layouts. Each template specifies:
+- **Anchors** – Unique text at specific coordinates that identify the layout
+- **Zones** – Bounding boxes mapped to semantic roles (H1, P, Table, Artifact, etc.)
+- **Fields** – Extract metadata from specific areas (e.g., invoice number)
+- **Language** – Document language for accessibility
+
+### Step-by-Step Guide
+
+1. **Analyze your PDF** to find text coordinates:
+   ```bash
+   .venv/bin/python scripts/zonen_dump.py your_file.pdf 1
+   ```
+   This prints all text operators with their coordinates.
+
+2. **Create a template file** in `accessipdf/templates/vorlagen/` (e.g., `my-layout.yaml`):
 
 ```yaml
 name: my-layout
 sprache: en-US
 titel_muster: "Invoice {invoice_no}"
+
+# Anchor texts that uniquely identify this layout
 erkennung:
   - { text: "My Company Ltd.", seite: 1, bbox: [50, 770, 300, 800] }
+  - { text: "Invoice no:", seite: 1, bbox: [340, 692, 560, 712] }
+
+# Fields to extract for dynamic title
+felder:
+  invoice_no:
+    seite: 1
+    bbox: [340, 692, 560, 712]
+
+# Zones - mapped to semantic roles in reading order
 zonen:
+  - { name: letterhead, seiten: "1", bbox: [50, 770, 560, 800], rolle: P }
   - { name: subject, seiten: "1", bbox: [50, 590, 400, 620], rolle: H1 }
   - name: items
     seiten: alle
@@ -105,59 +271,257 @@ zonen:
     rolle: Table
     kopf_anker: ["Item", "Unit price"]
     spalten: [290, 370, 460]
+  - { name: smallprint, seiten: alle, bbox: [50, 40, 560, 62], rolle: Artifact }
+
+# Default role for unmatched content
 unbekannt_als: P
 ```
 
-To measure the zones, `scripts/zonen_dump.py your.pdf 1 2` prints every text
-operator with its coordinates.
+3. **Test your template:**
+   ```bash
+   .venv/bin/accessipdf identify your_file.pdf
+   .venv/bin/accessipdf convert your_file.pdf test_output/
+   ```
 
-## How it is verified
+### Zone Types
 
-Three gates, enforced by the pipeline and again by the test suite (`make test`).
+| Role | Description | PDF Tag |
+|------|-------------|---------|
+| `H1`, `H2`, `H3`, etc. | Headings | `<H1>`, `<H2>`, etc. |
+| `P` | Paragraph | `<P>` |
+| `Table` | Table with header cells | `<Table>`, `<TR>`, `<TH>`, `<TD>` |
+| `Artifact` | Decorative/non-content | `<Figure>` |
+| `List` | List items | `<L>`, `<LI>` |
+| `Link` | Hyperlink | `<Link>` |
 
-veraPDF has to report zero errors against the PDF/UA-1 profile, per file.
+### Page Selectors
 
-Every page is rendered before and after and compared pixel by pixel. One
-exception is allowed, the anti-aliasing noise at glyph edges after a font had to
-be embedded, and even that has to survive an erosion mask with a 9×9 kernel
-proving the difference contains no solid area. Nothing moved, nothing went
-missing.
+| Value | Meaning |
+|-------|---------|
+| `"1"` | Page 1 only |
+| `"alle"` | All pages |
+| `"letzte"` | Last page only |
+| `"ab2"` | Page 2 and beyond |
 
-No line of previously extractable text may be lost. It is allowed to get better,
-and it usually does: generating the missing ToUnicode maps tends to fix
-extraction that was garbled before, which is rather the point of PDF/UA.
+---
 
-The test suite builds the synthetic demo invoice, untagged, without ToUnicode,
-with Helvetica and Helvetica-Bold referenced but not embedded, and drives it
-through the whole pipeline including the veraPDF gate. The engine came out of a
-production job on real telecom invoices from two layout families, where 13 of 13
-files passed all three gates. Those documents carry customer data and are not in
-this repository.
+## Validation Gates
 
-A green machine result is not the same as a usable document. Before you put a
-layout into production, do one manual acceptance pass with PAC 2024 and a screen
-reader, NVDA or VoiceOver.
+Every converted PDF passes through **three validation gates** before being accepted:
 
-## Limitations, on purpose
+### 1. veraPDF Compliance
+- Validates against **PDF/UA-1** standard
+- Zero errors required
+- Full rule report in quarantine for failures
 
-Known layouts only. An unregistered PDF is quarantined rather than guessed at.
-For uniform, template-generated documents that is the better trade: the rules
-are readable, reviewable and always produce the same result, which a generic
-auto-tagger cannot promise.
+### 2. Pixel-Perfect Rendering
+- Renders each page before and after conversion
+- Compares pixel-by-pixel
+- Allows anti-aliasing noise at glyph edges
+- Noise must survive erosion mask (9x9 kernel)
 
-No scanned PDFs, because there is no OCR. No signed PDFs either, since tagging
-breaks the signature. Tag first, then sign.
+### 3. Text Extraction Integrity
+- Extracts text before and after
+- No line of previously extractable text may be lost
+- Text may improve (ToUnicode generation fixes garbled text)
 
-Zones are measured against a specific layout, so a redesign means a template
-update.
+---
 
-Identifiers and comments in the code are German, and so is the CLI help output.
-The project started in a German accessibility context. Contributions are
-welcome, translation included.
+## CI/CD Pipeline
+
+The project includes a comprehensive CI/CD setup:
+
+### GitHub Actions Workflow (`.github/workflows/test.yml`)
+
+**Matrix:**
+- **OS**: Ubuntu, macOS, Windows
+- **Python**: 3.12, 3.13, 3.14
+
+**Jobs:**
+
+1. **test** – Run full test suite with coverage
+   - Installs veraPDF on each platform
+   - Runs pytest with coverage
+   - Uploads to Codecov
+
+2. **type-check** – Static type checking with mypy
+
+3. **lint** – Code style checking with ruff
+
+**Running Tests Locally:**
+
+```bash
+# All tests
+make test
+
+# With coverage
+make test-cov
+
+# Type checking
+make type-check
+
+# Linting
+make lint
+
+# Fix linting issues
+make lint-fix
+```
+
+---
+
+## Project Structure
+
+```
+accessipdf/
+├── accessipdf/
+│   ├── __init__.py              # Version and package info
+│   ├── cli.py                   # Command-line interface
+│   ├── demo.py                  # Demo invoice generator
+│   ├── pipeline.py              # Main conversion pipeline
+│   ├── semantics.py             # Semantic role assignment
+│   ├── testkit.py               # Test utilities
+│   ├── core/
+│   │   └── model.py             # Core data models
+│   ├── tagging/
+│   │   ├── fonts.py             # Font repair
+│   │   ├── metadata.py          # PDF metadata
+│   │   ├── structure.py         # Structure tree
+│   │   ├── tables.py            # Table handling
+│   │   ├── tokenizer.py         # Text tokenization
+│   │   ├── walker.py            # Content walking
+│   │   └── wrap.py              # Content wrapping
+│   ├── templates/
+│   │   ├── loader.py            # Template loading
+│   │   └── vorlagen/            # YAML templates
+│   │       └── acme-demo.yaml    # Demo template
+│   └── validate/
+│       └── verapdf.py           # veraPDF wrapper
+├── gui/
+│   ├── __init__.py              # GUI package
+│   ├── app.py                   # Streamlit application
+│   └── README.md                # GUI documentation
+├── scripts/
+│   ├── run_gui.py               # GUI launch script
+│   ├── zonen_dump.py            # Zone coordinate dumper
+│   └── capture_screenshots.py   # Screenshot generator
+├── tests/
+│   ├── test_*.py                # Unit tests
+│   └── playwright/
+│       └── __init__.py           # Playwright tests
+├── docs/
+│   ├── media/
+│   │   ├── demo.gif             # Demo animation
+│   │   ├── demo.mp4             # Demo video
+│   │   └── gui/                 # GUI screenshots
+│   └── ...
+├── .github/
+│   └── workflows/
+│       └── test.yml             # CI configuration
+├── Dockerfile                   # Docker build
+├── docker-compose.yml           # Docker Compose
+├── .dockerignore                # Docker ignore
+├── pyproject.toml               # Project config
+├── Makefile                     # Common tasks
+├── README.md                    # This file
+└── LICENSE                      # MIT License
+```
+
+---
+
+## Browser-Based Testing
+
+The project includes **Playwright tests** for the Streamlit GUI:
+
+**Install Playwright:**
+```bash
+make playwright-install
+```
+
+**Run GUI Tests:**
+```bash
+make test-gui
+```
+
+**Test Coverage:**
+- GUI loads successfully
+- All 5 tabs are accessible
+- Tab content renders correctly
+- Sidebar has expected content
+- File uploader is present
+- Download buttons work correctly
+
+---
+
+## Performance
+
+| Task | Duration |
+|------|----------|
+| Engine processing (per PDF) | 0.1-0.15s |
+| veraPDF validation (per PDF) | ~0.7s (JVM startup) |
+| Full pipeline (per PDF) | ~0.85-1s |
+
+**Optimizations:**
+- SHA-256 registry for idempotent operations
+- Template caching
+- Parallel processing in batch mode
+- Multi-stage Docker build for smaller images
+
+---
+
+## Production Use
+
+### Recommended Setup
+
+1. **Create templates** for all your PDF layouts
+2. **Test with sample PDFs** from each layout
+3. **Set up monitoring** for quarantine directory
+4. **Automate batch processing** with Docker or cron
+
+### Example Workflow
+
+```bash
+# 1. Set up input/output directories
+mkdir -p input output quarantine
+
+# 2. Process all PDFs in input/
+accessipdf convert input/ output/ --quarantaene quarantine/
+
+# 3. Check results
+ls output/      # Successful conversions
+ls quarantine/  # Failed conversions with reports
+
+# 4. Review quarantine reports
+cat quarantine/*.bericht.json
+```
+
+### Docker Production Setup
+
+```bash
+# Create persistent volumes
+mkdir -p ./uploads ./outputs ./quarantine
+
+# Start with Docker Compose
+docker-compose up -d accessipdf-gui
+
+# Access at http://localhost:8501
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- Running tests
+- Adding new templates
+- Code quality standards
+
+---
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The bundled Liberation fonts used as embedding
-substitutes are under the SIL Open Font License, see
-[`accessipdf/assets/LIZENZ-LiberationSans.txt`](accessipdf/assets/LIZENZ-LiberationSans.txt).
+MIT License – see [LICENSE](LICENSE).
+
+The bundled Liberation fonts are licensed under the SIL Open Font License – see [accessipdf/assets/LIZENZ-LiberationSans.txt](accessipdf/assets/LIZENZ-LiberationSans.txt).
+
 veraPDF is called as an external tool and is not part of this distribution.

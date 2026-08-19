@@ -1,0 +1,40 @@
+version: "3.8"
+
+services:
+  accessipdf-gui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: accessipdf-gui
+    ports:
+      - "8501:8501"
+    volumes:
+      # Persist uploaded files and outputs
+      - ./uploads:/app/uploads
+      - ./outputs:/app/outputs
+      - ./quarantine:/app/quarantine
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import accessipdf; print('OK')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Optional: CLI-only service for batch processing
+  accessipdf-cli:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: accessipdf-cli
+    command: ["python", "-m", "accessipdf.cli"]
+    volumes:
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./quarantine:/app/quarantine
+    environment:
+      - PYTHONUNBUFFERED=1
+    profiles:
+      - cli

@@ -1,0 +1,77 @@
+# Python
+.venv
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+ENV/
+env/
+venv/
+ENV.bak/
+venv.bak/
+
+# Testing
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+.docker/
+
+# Output directories
+outputs/
+uploads/
+quarantine/
+beispiele/
+ausgang/
+eingang/
+
+# Generated files
+*.pdf
+demo_invoice.pdf
+
+# Docs
+docs/media/frames/
+
+# Logs
+*.log
+
+# Temp files
+*.tmp
+*.temp

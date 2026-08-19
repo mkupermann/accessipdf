@@ -21,6 +21,8 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.4",
     "types-PyYAML>=6",
+    "streamlit>=1.30",
+    "playwright>=1.40",
 ]
 
 [project.scripts]
@@ -56,6 +58,7 @@ ignore = [
     "N818",  # Exception name should end with Error
     "B905",  # zip() without explicit strict= parameter
     "SIM101", # Multiple isinstance calls
+    "SIM117", # Multiple with statements (needed for Streamlit spinner context)
 ]
 
 [tool.ruff.format]

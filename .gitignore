@@ -14,6 +14,8 @@ beispiele/
 ausgang/
 quarantaene/
 eingang/
+uploads/
+outputs/
 
 # Generated files
 *.pdf
