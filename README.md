@@ -1,6 +1,6 @@
 # accessipdf
 
-<img width="978" height="728" alt="image" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
+<img width="428" height="228" alt="image" src="https://github.com/user-attachments/assets/b1302500-41ae-406b-ace3-3b16a1f3370d" />
 
 
 Screen readers get nothing useful out of most PDFs in circulation. There are no
