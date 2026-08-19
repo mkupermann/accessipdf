@@ -8,7 +8,9 @@ layout, validated by [veraPDF](https://verapdf.org/) on every single file.
 
 ![Demo](docs/media/demo.gif)
 
-*(Full video: [docs/media/demo.mp4](docs/media/demo.mp4))*
+https://github.com/mkupermann/accessipdf/raw/main/docs/media/demo.mp4
+
+*(Full video with timing: [docs/media/demo.mp4](docs/media/demo.mp4))*
 
 ## Why
 
