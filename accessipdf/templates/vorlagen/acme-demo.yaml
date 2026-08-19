@@ -1,0 +1,49 @@
+# Demo layout for the synthetic ACME invoice (accessipdf/demo.py).
+# Serves as the reference for writing your own templates.
+name: acme-demo
+sprache: en-US
+titel_muster: "Invoice {invoice_no}"
+
+felder:
+  invoice_no:
+    seite: 1
+    bbox: [340, 692, 560, 712]
+
+erkennung:
+  - text: "ACME Utilities Ltd."
+    seite: 1
+    bbox: [50, 770, 300, 800]
+  - text: "Invoice no:"
+    seite: 1
+    bbox: [340, 692, 560, 712]
+
+# Zone order = reading order
+zonen:
+  - name: letterhead
+    seiten: "1"
+    bbox: [50, 770, 560, 800]
+    rolle: P
+  - name: recipient
+    seiten: "1"
+    bbox: [50, 660, 300, 715]
+    rolle: P
+  - name: invoice_meta
+    seiten: "1"
+    bbox: [340, 660, 560, 715]
+    rolle: P
+  - name: subject
+    seiten: "1"
+    bbox: [50, 590, 400, 620]
+    rolle: H1
+  - name: items
+    seiten: "1"
+    bbox: [50, 420, 560, 575]
+    rolle: Table
+    kopf_anker: ["Item", "Unit price"]
+    spalten: [290, 370, 460]
+  - name: smallprint
+    seiten: alle
+    bbox: [50, 40, 560, 62]
+    rolle: Artifact
+
+unbekannt_als: P
