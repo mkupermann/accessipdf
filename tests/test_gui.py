@@ -160,5 +160,6 @@ def test_file_uploader_present(page):
     page.goto("http://127.0.0.1:8502")
     page.wait_for_selector(".stApp", timeout=30000)
     page.wait_for_selector("role=tab", timeout=30000)
+    page.wait_for_selector(".stFileUploader", timeout=30000)
 
     assert page.locator(".stFileUploader").first.is_visible()

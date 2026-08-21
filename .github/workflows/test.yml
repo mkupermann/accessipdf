@@ -27,11 +27,14 @@ jobs:
 
       # veraPDF has no apt or choco package (despite what the old workflow
       # assumed) — only Homebrew carries one. Everywhere else this drives the
-      # official installer's text-menu console mode by piping answers to it,
-      # the same approach used successfully in other projects' CI. The sleeps
-      # give the Java process time to render each prompt before the next
-      # answer arrives. Both the plain install dir and its bin/ subfolder are
-      # added to PATH since installer layouts have varied between versions.
+      # official installer's text-menu console mode by piping answers to it.
+      # Sequence verified against a real run of v1.30.2's actual prompts:
+      # continue, install path, OK to create it, continue, then Y/N per
+      # optional pack (GUI: no, CLI: yes — this is the one we need,
+      # Documentation: no, Sample Plugins: no), then continue past the
+      # finished screen. The trailing sleeps give Java time to render each
+      # prompt; the trailing extra "1" is a no-op safety margin if one more
+      # screen follows completion.
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
         timeout-minutes: 5
@@ -42,7 +45,8 @@ jobs:
           unzip -q verapdf-installer.zip
           install_dir="$HOME/verapdf"
           (echo "1"; sleep 1; echo "$install_dir"; sleep 1; echo "O"; sleep 1; \
-           echo "1"; sleep 1; echo "Y"; sleep 1; echo "N"; sleep 1; echo "N"; sleep 1; echo "1") \
+           echo "1"; sleep 1; echo "N"; sleep 1; echo "Y"; sleep 1; echo "N"; sleep 1; \
+           echo "N"; sleep 1; echo "1"; sleep 1; echo "1") \
             | sh ./verapdf-*/verapdf-install
           echo "$install_dir" >> "$GITHUB_PATH"
           echo "$install_dir/bin" >> "$GITHUB_PATH"
@@ -52,6 +56,11 @@ jobs:
         run: |
           brew install verapdf
 
+      # Same console installer as Linux, but must run with the installer's
+      # own directory as the working directory — invoking verapdf-install.bat
+      # by full path from a different cwd fails to locate its packsLang.xml
+      # resource and hangs forever, which the timeout above only turns from
+      # a silent hang into a clean failure.
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         timeout-minutes: 5
@@ -61,8 +70,10 @@ jobs:
           Expand-Archive -Path "verapdf-installer.zip" -DestinationPath "." -Force
           $installDir = "$env:USERPROFILE\verapdf"
           $installerDir = Get-ChildItem -Directory -Filter "verapdf-*" | Select-Object -First 1
-          $answers = "1`n$installDir`nO`n1`nY`nN`nN`n1`n"
-          $answers | & "$($installerDir.FullName)\verapdf-install.bat"
+          $answers = "1`n$installDir`nO`n1`nN`nY`nN`nN`n1`n1`n"
+          Push-Location $installerDir.FullName
+          $answers | & ".\verapdf-install.bat"
+          Pop-Location
           Add-Content -Path $env:GITHUB_PATH -Value $installDir
           Add-Content -Path $env:GITHUB_PATH -Value "$installDir\bin"
 
@@ -120,11 +131,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      # accessipdf/testkit.py imports pytest directly (it's a fixture helper,
+      # not a test file), so mypy needs pytest itself installed to resolve it.
       - name: Install dependencies
         run: |
           python -m venv .venv
           .venv/bin/pip install -q -e .
-          .venv/bin/pip install mypy
+          .venv/bin/pip install mypy pytest
 
       - name: Run mypy
         run: .venv/bin/mypy accessipdf/
