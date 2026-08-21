@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -33,7 +34,22 @@ def streamlit_server():
         stderr=subprocess.DEVNULL,
     )
 
-    time.sleep(10)
+    # A fixed sleep here raced the server on slower starts (newer Python
+    # versions, cold CI caches, or the app now pulling in a Google Fonts
+    # request on first paint) — tests ran against a page that was still
+    # rendering. Poll the actual health endpoint instead of guessing a delay.
+    deadline = time.monotonic() + 30
+    while time.monotonic() < deadline:
+        try:
+            with urllib.request.urlopen("http://127.0.0.1:8502/_stcore/health", timeout=1) as resp:
+                if resp.status == 200:
+                    break
+        except OSError:
+            pass
+        time.sleep(0.5)
+    else:
+        proc.terminate()
+        raise RuntimeError("Streamlit server did not become ready within 30s")
 
     yield proc
 
