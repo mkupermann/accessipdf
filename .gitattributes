@@ -1,0 +1,4 @@
+# Force LF regardless of the checkout platform's core.autocrlf. Without this,
+# a Windows commit compared byte-for-byte (or reformatted) on Linux CI reads
+# as different from what a fresh Linux run produces, purely from line endings.
+* text=auto eol=lf

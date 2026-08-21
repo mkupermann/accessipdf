@@ -25,11 +25,27 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
+      # veraPDF has no apt or choco package (despite what the old workflow
+      # assumed) — only Homebrew carries one. Everywhere else this drives the
+      # official installer's text-menu console mode by piping answers to it,
+      # the same approach used successfully in other projects' CI. The sleeps
+      # give the Java process time to render each prompt before the next
+      # answer arrives. Both the plain install dir and its bin/ subfolder are
+      # added to PATH since installer layouts have varied between versions.
       - name: Install system dependencies (Linux)
         if: runner.os == 'Linux'
+        timeout-minutes: 5
         run: |
           sudo apt-get update
-          sudo apt-get install -y verapdf
+          sudo apt-get install -y --no-install-recommends default-jre-headless unzip
+          curl -fsSL -o verapdf-installer.zip https://software.verapdf.org/rel/verapdf-installer.zip
+          unzip -q verapdf-installer.zip
+          install_dir="$HOME/verapdf"
+          (echo "1"; sleep 1; echo "$install_dir"; sleep 1; echo "O"; sleep 1; \
+           echo "1"; sleep 1; echo "Y"; sleep 1; echo "N"; sleep 1; echo "N"; sleep 1; echo "1") \
+            | sh ./verapdf-*/verapdf-install
+          echo "$install_dir" >> "$GITHUB_PATH"
+          echo "$install_dir/bin" >> "$GITHUB_PATH"
 
       - name: Install system dependencies (macOS)
         if: runner.os == 'macOS'
@@ -38,23 +54,53 @@ jobs:
 
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
+        timeout-minutes: 5
+        shell: pwsh
         run: |
-          choco install verapdf -y --no-progress
-        env:
-          CHOCOLATEY_FAILED_INSTALL_COUNT: 3
+          Invoke-WebRequest -Uri "https://software.verapdf.org/rel/verapdf-installer.zip" -OutFile "verapdf-installer.zip"
+          Expand-Archive -Path "verapdf-installer.zip" -DestinationPath "." -Force
+          $installDir = "$env:USERPROFILE\verapdf"
+          $installerDir = Get-ChildItem -Directory -Filter "verapdf-*" | Select-Object -First 1
+          $answers = "1`n$installDir`nO`n1`nY`nN`nN`n1`n"
+          $answers | & "$($installerDir.FullName)\verapdf-install.bat"
+          Add-Content -Path $env:GITHUB_PATH -Value $installDir
+          Add-Content -Path $env:GITHUB_PATH -Value "$installDir\bin"
 
       - name: Verify veraPDF is available
         run: verapdf --version
 
+      # A Windows venv puts its executables in Scripts/, not bin/ — the old
+      # workflow's hardcoded `.venv/bin/...` never worked on windows-latest,
+      # independent of the veraPDF issue above. VENV_BIN carries the right
+      # path to every later step via $GITHUB_ENV.
       - name: Install Python dependencies
+        shell: bash
         run: |
           python -m venv .venv
-          .venv/bin/pip install -q -e '.[dev]'
-          .venv/bin/pip install pytest-cov
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "VENV_BIN=.venv/Scripts" >> "$GITHUB_ENV"
+            VENV_BIN=".venv/Scripts"
+          else
+            echo "VENV_BIN=.venv/bin" >> "$GITHUB_ENV"
+            VENV_BIN=".venv/bin"
+          fi
+          "$VENV_BIN/pip" install -q -e '.[dev]'
+          "$VENV_BIN/pip" install pytest-cov
+
+      - name: Install Playwright browser (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: $VENV_BIN/python -m playwright install --with-deps chromium
+
+      - name: Install Playwright browser (macOS/Windows)
+        if: runner.os != 'Linux'
+        shell: bash
+        run: $VENV_BIN/python -m playwright install chromium
 
       - name: Run tests with coverage
+        shell: bash
         run: |
-          .venv/bin/pytest -q --cov=accessipdf --cov-report=xml tests/
+          $VENV_BIN/pytest -q --cov=accessipdf --cov-report=xml tests/
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
