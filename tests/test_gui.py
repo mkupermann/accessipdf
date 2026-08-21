@@ -166,6 +166,7 @@ def test_sidebar(page):
     page.wait_for_selector("section[data-testid='stSidebar']", timeout=30000)
 
     sidebar = page.locator("section[data-testid='stSidebar']")
+    page.wait_for_selector("section[data-testid='stSidebar'] >> text=About", timeout=30000)
     assert sidebar.locator("text=Settings").first.is_visible()
     assert sidebar.locator("text=About").first.is_visible()
 
