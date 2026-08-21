@@ -1,19 +1,17 @@
 """Streamlit GUI for accessipdf - PDF Accessibility Conversion."""
 
-import os
 import tempfile
 from pathlib import Path
 
+import pikepdf
 import streamlit as st
 
 from accessipdf import __version__
 from accessipdf.pipeline import convert
-from accessipdf.templates.loader import identify as identify_template, load_templates
 from accessipdf.tagging.walker import walk_page
+from accessipdf.templates.loader import identify as identify_template
+from accessipdf.templates.loader import load_templates
 from accessipdf.validate.verapdf import validate_ua1
-
-import pikepdf
-
 
 # Page configuration
 st.set_page_config(
@@ -22,171 +20,187 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-# Professional CSS
+# accessipdf's own subject is PDF/UA tags — the structure the tool adds to a
+# document. The status language below (`<pass>`, `<identified: …>`) borrows
+# that same angle-bracket syntax instead of generic colored alert boxes, so
+# the interface reads with the same vocabulary as the thing it's reporting
+# on. Fraunces (a document, not a dashboard, deserves a serif) pairs with
+# the existing IBM Plex Sans/Mono family already used for the tag chips.
 st.markdown(
     """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap');
-    
-    * { font-family: 'IBM Plex Sans', sans-serif; }
-    
-    .main-header {
-        font-size: 2rem;
-        font-weight: 600;
-        color: #1a1a1a;
-        margin-bottom: 1rem;
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+    :root {
+        --ink: #1c1a16;
+        --ink-soft: #55493c;
+        --paper: #faf6ee;
+        --paper-raised: #ffffff;
+        --rule: #e2d9c8;
+        --accent: #2f6f5e;
+        --accent-soft: #e7efe9;
+        --flag-fail: #a8412f;
+        --flag-fail-soft: #f5e6e1;
+        --flag-warn: #8a6420;
+        --flag-warn-soft: #f4ecd8;
     }
-    
+
+    * { font-family: 'IBM Plex Sans', sans-serif; }
+
+    .stApp, section[data-testid="stSidebar"], .main .block-container {
+        background: var(--paper);
+        color: var(--ink);
+    }
+
+    .stMarkdown, .stMarkdown p, .stMarkdown li { color: var(--ink-soft); }
+    /* .stMarkdown p (two selectors) otherwise beats the single-class rules
+       below, silently recoloring the header back to body-text ink-soft. */
+    .stMarkdown p.main-header { color: var(--ink); }
+    .stMarkdown span.eyebrow { color: var(--accent); }
+
+    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
+        font-family: 'Fraunces', serif;
+        color: var(--ink);
+        font-weight: 600;
+        text-wrap: balance;
+    }
+
+    .eyebrow {
+        display: block;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.75rem;
+        color: var(--accent);
+        letter-spacing: 0.02em;
+        margin-bottom: 0.35rem;
+    }
+
+    .main-header {
+        font-family: 'Fraunces', serif;
+        font-size: 2.4rem;
+        font-weight: 600;
+        color: var(--ink);
+        margin: 0;
+        line-height: 1.1;
+    }
+
     .sub-header {
         font-size: 1rem;
-        color: #666;
-        text-align: center;
-        margin-bottom: 2rem;
+        color: var(--ink-soft);
+        margin: 0.4rem 0 1rem;
     }
-    
-    .stCard {
-        background: #ffffff;
-        border: 1px solid #e0e0e0;
-        border-radius: 8px;
-        padding: 1.5rem;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        margin-bottom: 1.5rem;
-    }
-    
-    .stButton > button {
-        background: #1967d2;
-        color: white;
+
+    .header-rule {
         border: none;
-        border-radius: 4px;
-        padding: 0.5rem 1.5rem;
-        font-size: 0.875rem;
+        border-top: 1px dashed var(--rule);
+        margin: 0 0 1.75rem;
+    }
+
+    /* The tag-chip status language — one visual family for every pass/fail/
+       identify/quarantine state the tool reports, in the tool's own syntax. */
+    .tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.4em;
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.9rem;
+        padding: 0.55rem 0.9rem;
+        border-radius: 3px;
+        border: 1px solid transparent;
+        margin: 0.6rem 0;
+    }
+    .tag-chip.tag-ok { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+    .tag-chip.tag-fail { background: var(--flag-fail-soft); border-color: var(--flag-fail); color: var(--flag-fail); }
+    .tag-chip.tag-warn { background: var(--flag-warn-soft); border-color: var(--flag-warn); color: var(--flag-warn); }
+    .tag-chip.tag-info { background: var(--paper-raised); border-color: var(--rule); color: var(--ink-soft); }
+
+    .stButton > button, .stDownloadButton > button {
+        background: var(--paper-raised);
+        color: var(--ink);
+        border: 1.5px solid var(--ink);
+        border-radius: 3px;
+        padding: 0.5rem 1.4rem;
+        font-size: 0.9rem;
         font-weight: 500;
-        letter-spacing: 0.02857em;
-        text-transform: uppercase;
     }
-    
-    .stButton > button:hover {
-        background: #1557b0;
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
     }
-    
+    .stButton > button[kind="primary"] {
+        background: var(--accent);
+        color: var(--paper-raised);
+        border-color: var(--accent);
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: #24594b;
+        color: var(--paper-raised);
+    }
+
     .stFileUploader > div > div > div {
-        background: #f5f5f5;
-        border: 2px dashed #cccccc;
-        border-radius: 4px;
+        background: var(--paper-raised);
+        border: 1.5px dashed var(--rule);
+        border-radius: 3px;
         padding: 2rem;
     }
-    
+    .stFileUploader { border: none !important; }
+
     section[data-testid="stSidebar"] {
-        background: #f8f9fa;
-        border-right: 1px solid #e0e0e0;
+        border-right: 1px solid var(--rule);
     }
-    
-    .success-box {
-        background: #e8f5e9;
-        padding: 1rem;
-        border-radius: 4px;
-        border-left: 4px solid #2e7d32;
-        color: #1b5e20;
-        margin: 1rem 0;
-    }
-    
-    .error-box {
-        background: #ffebee;
-        padding: 1rem;
-        border-radius: 4px;
-        border-left: 4px solid #c62828;
-        color: #b71c1c;
-        margin: 1rem 0;
-    }
-    
-    .info-box {
-        background: #e3f2fd;
-        padding: 1rem;
-        border-radius: 4px;
-        border-left: 4px solid #1565c0;
-        color: #0d47a1;
-        margin: 1rem 0;
-    }
-    
-    .warning-box {
-        background: #fff3e0;
-        padding: 1rem;
-        border-radius: 4px;
-        border-left: 4px solid #e65100;
-        color: #bf360c;
-        margin: 1rem 0;
-    }
-    
+
     .stTabs [data-baseweb="tab-list"] {
-        gap: 0;
-        background: #f5f5f5;
+        gap: 1.5rem;
+        background: transparent;
         padding: 0;
-        border-bottom: 1px solid #e0e0e0;
+        border-bottom: 1px solid var(--rule);
     }
-    
     .stTabs [data-baseweb="tab"] {
         background: transparent;
-        color: #555;
+        color: var(--ink-soft);
+        font-family: 'Fraunces', serif;
+        font-size: 1.05rem;
         border-radius: 0;
-        padding: 12px 24px;
-        font-weight: 500;
+        padding: 8px 2px 12px;
         border-bottom: 2px solid transparent;
     }
-    
     .stTabs [aria-selected="true"] {
-        background: #ffffff;
-        color: #1967d2;
-        border-bottom-color: #1967d2;
+        color: var(--ink);
+        border-bottom-color: var(--accent);
     }
-    
+    /* The visible active-tab underline isn't the tab's own border — it's a
+       separate indicator element React Aria draws in Streamlit's default red. */
+    .react-aria-SelectionIndicator {
+        background: var(--accent) !important;
+    }
+
     .stSelectbox > div > div {
-        background: #ffffff;
-        border: 1px solid #cccccc;
-        border-radius: 4px;
+        background: var(--paper-raised);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
     }
-    
-    .stDownloadButton > button {
-        background: #1967d2;
-        color: white;
-        border: none;
-        border-radius: 4px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 500;
-    }
-    
+
     .streamlit-expanderHeader {
-        background: #f5f5f5;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        color: #1a1a1a;
+        background: var(--paper-raised);
+        border: 1px solid var(--rule);
+        border-radius: 3px;
+        color: var(--ink);
         font-weight: 500;
     }
-    
-    .stMarkdown {
-        color: #333;
-    }
-    
-    .stMarkdown h1, .stMarkdown h2, .stMarkdown h3, .stMarkdown h4 {
-        color: #1a1a1a;
-        font-weight: 600;
-    }
-    
+
     .block-container {
         padding-top: 1.5rem;
         padding-bottom: 1.5rem;
-    }
-    
-    .stFileUploader {
-        border: none !important;
-    }
-    
-    .stApp {
-        padding-top: 0;
     }
     </style>
     """,
     unsafe_allow_html=True,
 )
+
+
+def tag_chip(text: str, kind: str = "info") -> str:
+    """Render a status as a monospace angle-bracket tag, matching the PDF/UA
+    tag vocabulary the tool itself produces, instead of a generic alert box."""
+    return f'<div class="tag-chip tag-{kind}">&lt;{text}&gt;</div>'
 
 
 # Cache template loading
@@ -200,25 +214,25 @@ TEMPLATES = get_templates()
 
 def main():
     """Main Streamlit application."""
-    st.markdown('<p class="main-header">accessipdf</p>', unsafe_allow_html=True)
     st.markdown(
-        '<p class="sub-header">PDF Accessibility Conversion - PDF/UA-1 Compliance</p>',
+        '<span class="eyebrow">&lt;Document&gt;</span>'
+        '<p class="main-header">accessipdf</p>'
+        '<p class="sub-header">Tags existing PDFs for PDF/UA-1, without touching how they look.</p>'
+        '<hr class="header-rule" />',
         unsafe_allow_html=True,
     )
 
     with st.sidebar:
-        st.markdown("## Settings")
+        st.markdown('<span class="eyebrow">&lt;Settings&gt;</span>', unsafe_allow_html=True)
         st.markdown(f"**Version:** {__version__}")
         st.markdown("---")
-        st.markdown("## About")
+        st.markdown('<span class="eyebrow">&lt;About&gt;</span>', unsafe_allow_html=True)
         st.markdown(
-            "accessipdf converts existing PDFs to PDF/UA-1 compliant accessible documents."
-        )
-        st.markdown(
-            "The conversion is template-driven, ensuring pixel-perfect output."
+            "accessipdf tags existing PDFs for PDF/UA-1 compliance, template-driven, "
+            "pixel-identical to the source."
         )
         st.markdown("---")
-        st.markdown("## Links")
+        st.markdown('<span class="eyebrow">&lt;Links&gt;</span>', unsafe_allow_html=True)
         st.markdown("[GitHub Repository](https://github.com/mkupermann/accessipdf)")
         st.markdown("[PDF/UA Standard](https://www.pdfa.org/standard/pdfua/)")
 
@@ -298,19 +312,12 @@ def page_identify():
 
                     if template:
                         st.markdown(
-                            '<div class="success-box">'
-                            f"Layout identified: <strong>{template.name}</strong>"
-                            "</div>",
-                            unsafe_allow_html=True,
+                            tag_chip(f"identified: {template.name}", "ok"), unsafe_allow_html=True
                         )
                         show_template_details(template)
                     else:
-                        st.markdown(
-                            '<div class="error-box">'
-                            "Could not identify layout. This PDF does not match any registered template."
-                            "</div>",
-                            unsafe_allow_html=True,
-                        )
+                        st.markdown(tag_chip("unidentified", "fail"), unsafe_allow_html=True)
+                        st.caption("This PDF does not match any registered template.")
                 except Exception as e:
                     st.error(f"Error: {str(e)}")
 
@@ -337,18 +344,11 @@ def page_validate():
                     validation = validate_ua1(str(pdf_path))
 
                     if validation.passed:
-                        st.markdown(
-                            '<div class="success-box">'
-                            "PDF/UA-1 VALIDATION PASSED"
-                            "</div>",
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown("This PDF meets all PDF/UA-1 accessibility requirements.")
+                        st.markdown(tag_chip("pass", "ok"), unsafe_allow_html=True)
+                        st.caption("This PDF meets all PDF/UA-1 accessibility requirements.")
                     else:
                         st.markdown(
-                            '<div class="error-box">'
-                            f"PDF/UA-1 VALIDATION FAILED ({len(validation.failed_rules)} rules)"
-                            "</div>",
+                            tag_chip(f"fail · {len(validation.failed_rules)} rules", "fail"),
                             unsafe_allow_html=True,
                         )
                         with st.expander("Failed Rules"):
@@ -390,20 +390,11 @@ def process_upload(uploaded_file):
             template = identify_template(ops, TEMPLATES)
 
             if not template:
-                st.markdown(
-                    '<div class="error-box">'
-                    "Could not identify layout. This PDF does not match any registered template."
-                    "</div>",
-                    unsafe_allow_html=True,
-                )
+                st.markdown(tag_chip("unidentified", "fail"), unsafe_allow_html=True)
+                st.caption("This PDF does not match any registered template.")
                 return
 
-            st.markdown(
-                '<div class="success-box">'
-                f"Layout: {template.name}"
-                "</div>",
-                unsafe_allow_html=True,
-            )
+            st.markdown(tag_chip(f"identified: {template.name}", "ok"), unsafe_allow_html=True)
 
             if st.button("Convert", type="primary"):
                 with st.spinner("Converting..."):
@@ -416,22 +407,12 @@ def process_upload(uploaded_file):
                     output_pdf = output_dir / uploaded_file.name
 
                     if result.status == "ok" and output_pdf.exists():
-                        st.markdown(
-                            '<div class="success-box">'
-                            "Conversion successful!"
-                            "</div>",
-                            unsafe_allow_html=True,
-                        )
+                        st.markdown(tag_chip("converted", "ok"), unsafe_allow_html=True)
 
                         with st.spinner("Validating..."):
                             validation = validate_ua1(str(output_pdf))
                             if validation.passed:
-                                st.markdown(
-                                    '<div class="success-box">'
-                                    "PDF/UA-1 VALID"
-                                    "</div>",
-                                    unsafe_allow_html=True,
-                                )
+                                st.markdown(tag_chip("pass", "ok"), unsafe_allow_html=True)
 
                         st.markdown("### Download")
                         col1, col2 = st.columns(2)
@@ -452,12 +433,8 @@ def process_upload(uploaded_file):
                                     mime="application/pdf",
                                 )
                     else:
-                        st.markdown(
-                            '<div class="error-box">'
-                            f"Conversion failed: {result.grund}"
-                            "</div>",
-                            unsafe_allow_html=True,
-                        )
+                        st.markdown(tag_chip("failed", "fail"), unsafe_allow_html=True)
+                        st.caption(result.grund)
 
 
 def process_batch(uploaded_files):
@@ -500,9 +477,14 @@ def process_batch(uploaded_files):
                 st.metric("Errors", err_count)
 
             with st.expander("Details"):
+                chip_kind = {"ok": "ok", "quarantaene": "warn", "fehler": "fail"}
+                chip_label = {"ok": "ok", "quarantaene": "quarantined", "fehler": "error"}
                 for filename, result in results:
-                    status = {"ok": "OK", "quarantaene": "Quarantined", "fehler": "Error"}[result.status]
-                    st.markdown(f"**{filename}**: {status}")
+                    st.markdown(
+                        f"**{filename}** "
+                        + tag_chip(chip_label[result.status], chip_kind[result.status]),
+                        unsafe_allow_html=True,
+                    )
 
             if output_files:
                 import zipfile
