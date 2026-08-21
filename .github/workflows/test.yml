@@ -56,11 +56,12 @@ jobs:
         run: |
           brew install verapdf
 
-      # Same console installer as Linux, but must run with the installer's
-      # own directory as the working directory — invoking verapdf-install.bat
-      # by full path from a different cwd fails to locate its packsLang.xml
-      # resource and hangs forever, which the timeout above only turns from
-      # a silent hang into a clean failure.
+      # verapdf-install.bat invokes java with an ABSOLUTE path to the jar
+      # (via %~dp0), and that fails to locate the installer's packsLang.xml
+      # resource on Windows and hangs forever — the timeout above only turns
+      # the hang into a clean failure. The Linux shell script that works
+      # invokes the same jar by a bare RELATIVE filename after cd-ing into
+      # its own directory, so this bypasses the .bat and mirrors that instead.
       - name: Install system dependencies (Windows)
         if: runner.os == 'Windows'
         timeout-minutes: 5
@@ -70,9 +71,10 @@ jobs:
           Expand-Archive -Path "verapdf-installer.zip" -DestinationPath "." -Force
           $installDir = "$env:USERPROFILE\verapdf"
           $installerDir = Get-ChildItem -Directory -Filter "verapdf-*" | Select-Object -First 1
+          $jar = Get-ChildItem -Path $installerDir.FullName -Filter "verapdf-izpack-installer-*.jar" | Select-Object -First 1
           $answers = "1`n$installDir`nO`n1`nN`nY`nN`nN`n1`n1`n"
           Push-Location $installerDir.FullName
-          $answers | & ".\verapdf-install.bat"
+          $answers | & java -jar $jar.Name
           Pop-Location
           Add-Content -Path $env:GITHUB_PATH -Value $installDir
           Add-Content -Path $env:GITHUB_PATH -Value "$installDir\bin"
